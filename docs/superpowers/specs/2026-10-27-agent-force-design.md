@@ -152,7 +152,7 @@ State lives in `~/.agent_force/` (overridable with `AGENT_FORCE_HOME`):
                          # branch, cwd, created time, closed flag,
                          # claude session id (for --latest resume)
       status             # one word: starting | idle | working | done |
-                         # failed | blocked | closed
+                         # failed | blocked | closed | dead | interrupted | lost
       last_response.md   # the worker's last full response
       tasks/             # every prompt sent, numbered: 001.md, 002.md, …
     agent_01/             # the leader: meta.json with its claude session id

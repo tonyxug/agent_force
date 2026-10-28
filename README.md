@@ -56,7 +56,8 @@ which dialog it shows. Answer it, run `agent_force stop`, and try again.
 
 ```
 agent_force start            start a new leader agent_01 in the current folder
-                             (moves old state to archive/)
+                             (moves old state to archive/; kills and names
+                             leftover worker sessions)
 agent_force start --latest   resume the last leader and its open workers
 agent_force stop             kill all agents (the tmux server); keep state and worktrees
 agent_force list             one line per agent: name, role, status, folder, branch, last task
@@ -70,14 +71,23 @@ The leader uses helper commands in `utils/` (on its `PATH`): `af-spawn`,
 `af-send`, `af-watch`, `af-read`, `af-status`, `af-close`. You normally do
 not run them yourself.
 
+## Status words
+
+`agent_force list` shows one status per agent: `starting`, `idle`, `working`,
+`done`, `failed`, `blocked`, `closed`, `dead` (session gone), `interrupted`
+(the worker was working when agent_force stopped; `start --latest` keeps
+`done`, `failed`, and `blocked`), or `lost` (the task tag left the pane, so
+the outcome is unknown). The agent_force tmux server keeps 100000 lines of
+history per pane.
+
 ## Where things live
 
 - State: `~/.agent_force/agents/agent_NN/` (`meta.json`, `status`,
   `last_response.md`, `tasks/NNN.md`).
 - Old state from earlier fresh starts: `~/.agent_force/archive/<timestamp>/`.
 - Worker worktrees: `~/.agent_force/worktrees/<repo>-<hash>/agent_NN`, on
-  branch `agent_force/agent_NN` (with a `-2`, `-3`, ... suffix if the name is
-  taken).
+  branch `agent_force/agent_NN` (path and branch get a `-2`, `-3`, ... suffix
+  if either is taken, for example after a fresh start reuses the number).
 
 agent_force never commits, merges, pushes, or deletes a worktree.
 `stop` and `af-close` keep worktrees and state. Remove old worktrees yourself
