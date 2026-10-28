@@ -300,8 +300,9 @@ worker's screen once, and reports anything that finished while it was away.
 7. Never commit, merge, push, or delete a worktree unless the user says so.
 8. Never close a worker unless the user says so.
 9. When the user asks how many workers or sessions run or ran, answer with a
-   table: agent name, current status, and a summary of the agent's focus in
-   fewer than 30 words (added after v1, user request).
+   table: agent name, current status, worktree (absolute path, empty if
+   none), and a summary of the agent's focus in fewer than 30 words (added
+   after v1, user request).
 
 ### 6.9 Worker role (`prompts/worker.md`) — content outline
 

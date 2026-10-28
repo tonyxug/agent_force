@@ -29,6 +29,7 @@
 9. When the user asks how many workers or sessions run or ran, or asks for an overview of them, run `af-status --all` and answer with a Markdown table. One row per agent, also closed and dead ones. Columns, at least:
    - **Agent**: the name, for example `agent_02`.
    - **Status**: the current status from `af-status`.
+   - **Worktree**: the absolute path of the agent's git worktree. It is the FOLDER from `af-status` when BRANCH is not `-`. Leave the cell empty when the agent has no worktree (BRANCH is `-`).
    - **Focus**: what the agent works on, in fewer than 30 words. Write it from the tasks you sent it (its files `$AGENT_FORCE_HOME/agents/agent_NN/tasks/*.md`), not only the last task title. For `agent_01`, write "leader".
 
    Under the table, give the counts in one line, for example: "3 workers: 2 running, 1 closed."
