@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-27-agent-force-design.md`
 
+**Status:** Done on branch `v1`. The build differs from this plan in places. See [As-built changes](#as-built-changes) at the end.
+
 ## Global Constraints
 
 - Bash must run on macOS's `/bin/bash` 3.2: no associative arrays, no `mapfile`/`readarray`, no `${var,,}`, no `|&`. Shebang `#!/usr/bin/env bash`, `set -euo pipefail`.
@@ -89,7 +91,7 @@ README.md
   - `af_die MSG` → print `agent_force: MSG` to stderr, exit 1.
 - Produces (`tests/helpers.sh`): `assert_eq EXPECTED ACTUAL MSG`, `assert_contains HAYSTACK NEEDLE MSG`, `assert_fail CMD…`, `af_test_setup` (temp `AGENT_FORCE_HOME`, unique `AF_SOCKET=af_test_$$_$RANDOM`, `AF_ADAPTER_DIR=$repo/tests/fake_adapter`, `AF_POLL_INTERVAL=1`, `PATH=$repo/utils:$PATH`), `af_test_teardown` (kill tmux server on that socket, remove temp dir). Each `test_*.sh` defines `test_*` functions; `run.sh` runs each in a subshell with setup/teardown and prints `PASS name` / `FAIL name`, exit 1 if any fail.
 
-- [ ] **Step 1: Write `tests/run.sh`, `tests/helpers.sh`, and failing `tests/test_lib.sh`**
+- [x] **Step 1: Write `tests/run.sh`, `tests/helpers.sh`, and failing `tests/test_lib.sh`**
 
 ```bash
 test_name_normalize() {
@@ -116,10 +118,10 @@ test_next_number() {
 test_uuid() { assert_contains "$(af_uuid)" "-" "uuid"; }
 ```
 
-- [ ] **Step 2: Run** `bash tests/run.sh` → Expected: every `test_lib` test FAIL (lib missing).
-- [ ] **Step 3: Implement `utils/lib.sh`** with the functions above. `AF_ROOT` = parent of the folder holding `lib.sh`, resolved through symlinks with a portable loop (`cd -P` + `readlink`), not `readlink -f`.
-- [ ] **Step 4: Run** `bash tests/run.sh` → Expected: all `test_lib` PASS.
-- [ ] **Step 5: Commit** `git add utils/lib.sh tests && git commit -m "feat: add lib.sh and test harness"`
+- [x] **Step 2: Run** `bash tests/run.sh` → Expected: every `test_lib` test FAIL (lib missing).
+- [x] **Step 3: Implement `utils/lib.sh`** with the functions above. `AF_ROOT` = parent of the folder holding `lib.sh`, resolved through symlinks with a portable loop (`cd -P` + `readlink`), not `readlink -f`.
+- [x] **Step 4: Run** `bash tests/run.sh` → Expected: all `test_lib` PASS.
+- [x] **Step 5: Commit** `git add utils/lib.sh tests && git commit -m "feat: add lib.sh and test harness"`
 
 ---
 
@@ -135,7 +137,7 @@ test_uuid() { assert_contains "$(af_uuid)" "-" "uuid"; }
 - Produces: `af-parse --body NAME TAG < screen` prints lines strictly between the last tag line and the last valid marker below it (empty if none).
 - Rules: a valid marker is a line matching, after removing leading whitespace and one optional leading `⏺` or `●` plus spaces, exactly `[NAME: (done|failed|blocked|working)]` with optional trailing spaces. Only lines below the **last** line containing `TAG` count. Last valid marker wins.
 
-- [ ] **Step 1: Write failing `tests/test_parse.sh`** (feed heredoc screens)
+- [x] **Step 1: Write failing `tests/test_parse.sh`** (feed heredoc screens)
 
 ```bash
 T="(task agent_03-002)"
@@ -156,10 +158,10 @@ test_body() {
 }
 ```
 
-- [ ] **Step 2: Run** `bash tests/run.sh` → Expected: `test_parse` tests FAIL.
-- [ ] **Step 3: Implement `utils/af-parse`** with `awk` (fixed-string tag match via `index()`, not regex, since the tag holds `(`).
-- [ ] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
-- [ ] **Step 5: Commit** `git commit -m "feat: add af-parse marker parser"`
+- [x] **Step 2: Run** `bash tests/run.sh` → Expected: `test_parse` tests FAIL.
+- [x] **Step 3: Implement `utils/af-parse`** with `awk` (fixed-string tag match via `index()`, not regex, since the tag holds `(`).
+- [x] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
+- [x] **Step 5: Commit** `git commit -m "feat: add af-parse marker parser"`
 
 ---
 
@@ -180,7 +182,7 @@ test_body() {
   - tmux: `af_tmux new-session -d -s NAME -c CWD -e AF_AGENT=NAME -e AF_HOME=… -e AF_SOCKET=… "<launch cmd>"`; status `starting`.
   - Wait: capture pane every 0.5 s, pipe to `ready.sh`; on success status `idle`; after `${AF_READY_TIMEOUT:-60}` s → status `dead`, `af_die "agent_NN did not become ready"`.
 
-- [ ] **Step 1: Write fake adapter and failing `tests/test_spawn.sh`**
+- [x] **Step 1: Write fake adapter and failing `tests/test_spawn.sh`**
 
 ```bash
 mkrepo() { git init -q "$1"; git -C "$1" commit -q --allow-empty -m init; }
@@ -207,10 +209,10 @@ test_spawn_ready_timeout()  { mkdir "$AF_TMP/p"; AF_READY_TIMEOUT=2 AF_ADAPTER_D
 
 (`AF_TMP` is the temp dir from `af_test_setup`.)
 
-- [ ] **Step 2: Run** `bash tests/run.sh` → Expected: `test_spawn` FAIL.
-- [ ] **Step 3: Implement `utils/af-spawn`.**
-- [ ] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
-- [ ] **Step 5: Commit** `git commit -m "feat: add af-spawn and fake adapter"`
+- [x] **Step 2: Run** `bash tests/run.sh` → Expected: `test_spawn` FAIL.
+- [x] **Step 3: Implement `utils/af-spawn`.**
+- [x] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
+- [x] **Step 5: Commit** `git commit -m "feat: add af-spawn and fake adapter"`
 
 ---
 
@@ -237,7 +239,7 @@ At the very end of every answer, on its own line, write exactly one of:
 [NAME: working] if you are not finished yet.
 ```
 
-- [ ] **Step 1: Write failing `tests/test_send.sh`**
+- [x] **Step 1: Write failing `tests/test_send.sh`**
 
 ```bash
 cap() { af_tmux capture-pane -p -J -S - -t "$1"; }
@@ -265,10 +267,10 @@ test_send_blocked_answered_in_pane() {
 }
 ```
 
-- [ ] **Step 2: Run** → Expected: `test_send` FAIL.
-- [ ] **Step 3: Implement `utils/af-send`.**
-- [ ] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
-- [ ] **Step 5: Commit** `git commit -m "feat: add af-send"`
+- [x] **Step 2: Run** → Expected: `test_send` FAIL.
+- [x] **Step 3: Implement `utils/af-send`.**
+- [x] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
+- [x] **Step 5: Commit** `git commit -m "feat: add af-send"`
 
 ---
 
@@ -287,7 +289,7 @@ test_send_blocked_answered_in_pane() {
 - `af-status [--all]` — one line per agent (workers; `--all` also `agent_01` first), sorted by name, tab-separated: `NAME ROLE STATUS FOLDER BRANCH TITLE`. For a worker whose session is gone and status not `closed` → shows and saves `dead`. For a live worker with status `working` → parse screen once and update status/last_response the same way `af-watch` does (shared function `af_check NAME` in `lib.sh`).
 - `af-close AGENT` — kill its tmux session, status `closed`, meta `closed=true`. Keep worktree and state. Print `NAME closed`.
 
-- [ ] **Step 1: Write failing `tests/test_watch.sh`**
+- [x] **Step 1: Write failing `tests/test_watch.sh`**
 
 ```bash
 spawn() { mkdir -p "$AF_TMP/p"; af-spawn --dir "$AF_TMP/p" >/dev/null; }
@@ -309,10 +311,10 @@ test_close()                 { spawn; af-close 2 >/dev/null; assert_eq closed "$
                                ! af_alive agent_02; test -d "$(af_meta_get agent_02 cwd)"; }
 ```
 
-- [ ] **Step 2: Run** → Expected: `test_watch` FAIL.
-- [ ] **Step 3: Implement the four scripts and `af_check NAME` in `lib.sh`.**
-- [ ] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
-- [ ] **Step 5: Commit** `git commit -m "feat: add af-watch, af-read, af-status, af-close"`
+- [x] **Step 2: Run** → Expected: `test_watch` FAIL.
+- [x] **Step 3: Implement the four scripts and `af_check NAME` in `lib.sh`.**
+- [x] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
+- [x] **Step 5: Commit** `git commit -m "feat: add af-watch, af-read, af-status, af-close"`
 
 ---
 
@@ -339,7 +341,7 @@ test_close()                 { spawn; af-close 2 >/dev/null; assert_eq closed "$
 - `agent_force connect N` — `name=$(af_name N)`; not alive → die `NAME is not running`. Else `TMUX= af_tmux attach -t NAME` (`exec`). Print once before attach: `Detach: Ctrl-b d`.
 - No args / unknown command → usage text, exit 1.
 
-- [ ] **Step 1: Write failing `tests/test_cli.sh`**
+- [x] **Step 1: Write failing `tests/test_cli.sh`**
 
 ```bash
 af() { "$REPO/agent_force" "$@"; }   # REPO set by helpers.sh
@@ -361,10 +363,10 @@ test_usage()                { assert_fail af; assert_fail af bogus; }
 
 The fake adapter's `launch.sh` must echo `MODE` into the screen (`FAKE READY resume`) so `test_latest_resumes` can also assert `assert_contains "$(af_tmux capture-pane -p -t agent_02)" "resume"`. Add that assertion.
 
-- [ ] **Step 2: Run** → Expected: `test_cli` FAIL.
-- [ ] **Step 3: Implement `agent_force`; move ready-wait into `af_wait_ready NAME` in `lib.sh` and use it from `af-spawn`.**
-- [ ] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS (including earlier tasks).
-- [ ] **Step 5: Commit** `git commit -m "feat: add agent_force CLI"`
+- [x] **Step 2: Run** → Expected: `test_cli` FAIL.
+- [x] **Step 3: Implement `agent_force`; move ready-wait into `af_wait_ready NAME` in `lib.sh` and use it from `af-spawn`.**
+- [x] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS (including earlier tasks).
+- [x] **Step 5: Commit** `git commit -m "feat: add agent_force CLI"`
 
 ---
 
@@ -396,14 +398,58 @@ The fake adapter's `launch.sh` must echo `MODE` into the screen (`FAKE READY res
 
 `README.md`: dependencies, install (`ln -s "$PWD/agent_force" ~/.local/bin/agent_force` or run from repo root), the five CLI commands, how to detach (`Ctrl-b d`), where state and worktrees live, env vars (`AGENT_FORCE_HOME`, `AF_SOCKET`, `AF_POLL_INTERVAL`), the one-time Claude first-run note found in Step 1.
 
-- [ ] **Step 1: Capture real Claude screens.** In a scratch folder: `tmux -L af_probe new-session -d -s p "claude --dangerously-skip-permissions"`; wait; `tmux -L af_probe capture-pane -p -t p`. Record: the ready pattern, any first-run dialog, and how a 50-line paste via `paste-buffer -p` plus typed ` (task agent_09-001)` shows before and after Enter. Confirm the tag line stays visible and that an answer ending with `[agent_09: done]` parses with `af-parse`. Kill the probe server.
-- [ ] **Step 2: Write `adapters/claude/launch.sh`, `ready.sh`, the two prompts, and README** per above and Step 1 findings. If Step 1 shows the tag is not visible, stop and report back before changing the send method.
-- [ ] **Step 3: Live smoke test** (real Claude, `AF_POLL_INTERVAL=10`, temp `AGENT_FORCE_HOME`, scratch git repo):
+- [x] **Step 1: Capture real Claude screens.** In a scratch folder: `tmux -L af_probe new-session -d -s p "claude --dangerously-skip-permissions"`; wait; `tmux -L af_probe capture-pane -p -t p`. Record: the ready pattern, any first-run dialog, and how a 50-line paste via `paste-buffer -p` plus typed ` (task agent_09-001)` shows before and after Enter. Confirm the tag line stays visible and that an answer ending with `[agent_09: done]` parses with `af-parse`. Kill the probe server.
+- [x] **Step 2: Write `adapters/claude/launch.sh`, `ready.sh`, the two prompts, and README** per above and Step 1 findings. If Step 1 shows the tag is not visible, stop and report back before changing the send method.
+- [x] **Step 3: Live smoke test** (real Claude, `AF_POLL_INTERVAL=10`, temp `AGENT_FORCE_HOME`, scratch git repo):
   1. `agent_force start` → `agent_force list` shows `agent_01 idle`.
   2. In the leader (`tmux -L agent_force send-keys`), ask: "create a file hello.txt with the word hi". Expected: leader runs `af-spawn`, `af-send`, background `af-watch`, returns at once; within ~1 minute the leader pane reports `agent_02 done` with the worker's response; `hello.txt` exists in agent_02's worktree, not in the scratch repo; no commit made.
   3. Ask a follow-up for `agent_02`. Expected: same worker gets it.
   4. `agent_force stop`, `agent_force start --latest` → `agent_force list` shows `agent_01` and `agent_02` alive.
   5. `agent_force stop`.
   Record results in the commit message.
-- [ ] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
-- [ ] **Step 5: Commit** `git commit -m "feat: add Claude adapter, role prompts, README"`
+- [x] **Step 4: Run** `bash tests/run.sh` → Expected: all PASS.
+- [x] **Step 5: Commit** `git commit -m "feat: add Claude adapter, role prompts, README"`
+
+---
+
+## As-built changes
+
+This section records where the build differs from the tasks above. The tasks keep their original text.
+
+**Result:** 7 tasks done, 98 tests pass. The live smoke test with real Claude (Task 7, Step 3) passed steps 1–5.
+
+### Changes made during the tasks
+
+1. **Task 1** (`3299288`): `tests/run.sh` ran each test inside `if ( … )`, which turns off `set -e`, so a failed assert still passed. The runner now runs the test outside the `if` and checks `rc=$?`. A fixture covers it.
+2. **Task 3:** `af_wait_ready NAME` lives in `utils/lib.sh` from the start, not in `af-spawn` (it was to move there in Task 6).
+3. **Task 3:** meta `type` is the adapter folder name (`claude`, or `fake_adapter` in tests).
+4. **Task 3:** tmux pane targets use `=NAME:` (with the colon). `ready.sh` does not use `grep -q` on a pipe (it breaks under `pipefail`).
+5. **Task 4:** `test_send_blocked_answered_in_pane` types an untagged answer. The planned test typed the tag again, and `af-parse` counts only lines below the last tag, so that test could not pass.
+6. **Task 6:** a fresh `agent_force start` kills the whole tmux server, also live workers. Worktrees and archived state stay.
+7. **Task 7** (`6b527d7`): tmux ignores `new-session -e PATH`. `af_launch` puts `utils/` on `PATH` for the tmux call itself, so the leader finds `af-*`.
+8. **Task 7** (`7e1c8a2`): the launch command runs as `bash -c "$cmd"` (argv), not through the user's default shell. `$'…'` quoting broke under dash and fish.
+
+### Changes from the final review (`2245944`, `825beb2`, `4cb0ae7`)
+
+1. **Worktree reuse:** after a fresh start, `af-spawn` in a repo used before failed on the old path. The worktree path and the branch now take the same suffix (`agent_02-2`, `agent_02-3`, …) until both are free. If `git worktree add` fails, the agent folder is removed.
+2. **Resume keeps status:** `start --latest` reads each worker's old status before the relaunch. `working` becomes `interrupted`. `done`, `failed`, `blocked`, `interrupted` and `lost` stay.
+3. **`stop` saves results:** `agent_force stop` runs `af-status` before `kill-server`, so a worker that finished but was not checked shows `done`, not `interrupted`.
+4. **`af-watch` exit:** it exits on any status other than `working` and prints `NAME STATE TAG`. `dead` and `closed` print `NAME STATE`.
+5. **Lost tag:** `af_launch` sets `history-limit 100000` before the first pane. New `af_tag_seen NAME TAG`. After `AF_LOST_POLLS` (default 10) polls in a row without the tag, `af-watch` sets `lost` and prints `NAME lost TAG`.
+6. **New status words:** `interrupted` and `lost` (in addition to the plan's list).
+7. **Leader status:** `af-status` runs `af_check` for the leader too, so a stopped leader shows `dead`.
+8. **Ready wait:** `af_wait_ready` returns at once when the session is gone, and kills the session on timeout.
+9. **Fresh start output:** `start` prints `killed session NAME` for each live session.
+10. **Docs:** `prompts/leader.md` covers `closed`, `interrupted` and `lost`. README has a "Status words" section. `docs/.DS_Store` is no longer tracked.
+
+### Change after the final review (`9996f60`)
+
+1. **Status after `stop` → `list` → `start --latest`:** once sessions are gone, `af_check` writes `dead` over the saved status, so workers came back `idle`. `af_check` now saves the old status as meta `prev_status` before it writes `dead`. `start --latest` uses `prev_status` when the status is `dead`. `list` still shows `dead` after `stop`.
+2. Tests: `test_latest_after_list`, `test_latest_after_two_stops`.
+
+### Known gaps (not fixed)
+
+1. A task prompt that starts with `#`, `/` or `!` may switch Claude's input mode. Not checked with real Claude.
+2. `af-spawn --dir repo/sub` starts the worker at the worktree root, not in `sub`.
+3. A `lost` worker stays `lost` if it finishes later.
+4. A restored `blocked` worker keeps its old `blocked_count`.
