@@ -61,7 +61,7 @@ agent_force start            start a new leader agent_01 in the current folder
                              leftover worker sessions)
 agent_force start --latest   resume the last leader and its open workers
 agent_force stop             kill all agents (the tmux server); keep state and worktrees
-agent_force list             one line per agent: name, role, status, folder, branch, last task
+agent_force list             one line per live agent: name, role, status, folder, branch, last task
 agent_force connect N        attach to agent_NN (works inside tmux too)
 ```
 
@@ -74,7 +74,8 @@ not run them yourself.
 
 ## Status words
 
-`agent_force list` shows one status per agent: `starting`, `idle`, `working`,
+`agent_force list` shows only agents with a live session (closed and dead
+agents stay in state; the leader's `af-status --all` shows them). Status words: `starting`, `idle`, `working`,
 `done`, `failed`, `blocked`, `closed`, `dead` (session gone; `start --latest` restores the status it had before),
 `interrupted`
 (the worker was working when agent_force stopped; `start --latest` keeps

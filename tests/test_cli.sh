@@ -40,7 +40,13 @@ test_latest_keeps_outcome() { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/
 test_stop_saves_finished()  { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/null; echo hi | af-send 2 >/dev/null; sleep 1
                               af stop >/dev/null; assert_eq done "$(af_status_get agent_02)" "checked before stop"
                               af start --latest >/dev/null; assert_eq done "$(af_status_get agent_02)" "not interrupted"; }
-test_list_leader_dead()     { cd "$AF_TMP"; af start >/dev/null; af stop >/dev/null; assert_contains "$(af list)" dead "stopped leader"; }
+test_list_after_stop()      { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/null; af stop >/dev/null; assert_eq "no live agents" "$(af list)" "nothing live"; }
+test_list_hides_closed()    { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/null; af-spawn >/dev/null; af-close 2 >/dev/null
+                              s=$(af list); assert_contains "$s" agent_03 "live worker"
+                              case "$s" in *agent_02*) echo "closed agent_02 listed" >&2; return 1 ;; esac; }
+test_list_hides_dead()      { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/null; af_tmux kill-session -t =agent_02
+                              s=$(af list); assert_contains "$s" agent_01 "leader"
+                              case "$s" in *agent_02*) echo "dead agent_02 listed" >&2; return 1 ;; esac; }
 test_latest_after_list()    { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/null; af-spawn >/dev/null
                               af_status_set agent_02 done; af_status_set agent_03 working
                               af stop >/dev/null; af list >/dev/null; af list >/dev/null

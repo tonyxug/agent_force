@@ -416,7 +416,7 @@ The fake adapter's `launch.sh` must echo `MODE` into the screen (`FAKE READY res
 
 This section records where the build differs from the tasks above. The tasks keep their original text.
 
-**Result:** 7 tasks done, 101 tests pass. The live smoke test with real Claude (Task 7, Step 3) passed steps 1–5.
+**Result:** 7 tasks done, 103 tests pass. The live smoke test with real Claude (Task 7, Step 3) passed steps 1–5.
 
 ### Changes made during the tasks
 
@@ -453,6 +453,7 @@ This section records where the build differs from the tasks above. The tasks kee
 2. **Marker rules in the system prompt:** `af-send` no longer appends the status-marker instruction to each task. The task file holds the task as sent; `af-send` still types the task tag. The rules are in `prompts/worker.md`, which also says not to repeat the tag. Tests: `test_send_basic` checks the task file, `test_worker_prompt_has_markers`.
 3. **Worktree wording:** `prompts/leader.md` says to choose by what the task does, not by the folder. A research task in a git repo gets no worktree.
 4. **Overview table:** when the user asks how many workers or sessions run or ran, the leader runs `af-status --all` and answers with a table: Agent, Status, Focus (fewer than 30 words, from the tasks it sent), plus a count line. Rule 9 in `prompts/leader.md`.
+5. **`list` shows live agents only:** `agent_force list` hides agents with no tmux session (closed, dead, and all after `stop`) and prints `no live agents` when none run. `af-status --all` (used by the leader) still lists every agent. Tests: `test_list_after_stop`, `test_list_hides_closed`, `test_list_hides_dead` (replaces `test_list_leader_dead`).
 
 ### Known gaps (not fixed)
 

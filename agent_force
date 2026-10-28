@@ -94,10 +94,17 @@ cmd_stop() {
   echo stopped
 }
 
+# Only agents with a live tmux session. af-status still refreshes all statuses.
 cmd_list() {
-  local out
-  out="$("$AF_ROOT/utils/af-status" --all)"
-  if [ -n "$out" ]; then printf '%s\n' "$out"; else echo "no agents"; fi
+  local all line out=""
+  all="$("$AF_ROOT/utils/af-status" --all)"
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    af_alive "${line%%$'\t'*}" && out="$out$line"$'\n'
+  done <<EOF
+$all
+EOF
+  if [ -n "$out" ]; then printf '%s' "$out"; else echo "no live agents"; fi
 }
 
 cmd_connect() {
