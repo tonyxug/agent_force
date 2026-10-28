@@ -18,6 +18,7 @@ unset _af_src _af_dir
 AF_HOME="${AGENT_FORCE_HOME:-$HOME/.agent_force}"
 AF_SOCKET="${AF_SOCKET:-agent_force}"
 AF_ADAPTER_DIR="${AF_ADAPTER_DIR:-$AF_ROOT/adapters/claude}"
+AF_HISTORY_LIMIT=100000
 export AF_ROOT AF_HOME AF_SOCKET AF_ADAPTER_DIR
 
 af_die() {
@@ -130,7 +131,8 @@ af_uuid() {
 }
 
 # af_wait_ready NAME: wait until the adapter's ready.sh accepts the pane.
-# Success: status idle, return 0. Timeout (AF_READY_TIMEOUT, default 60 s): status dead, return 1.
+# Success: status idle, return 0. Session gone, or timeout (AF_READY_TIMEOUT,
+# default 60 s): kill the session, status dead, return 1.
 af_wait_ready() {
   local name="$1" timeout="${AF_READY_TIMEOUT:-60}" start now screen
   start="$(date +%s)"
@@ -141,7 +143,8 @@ af_wait_ready() {
       return 0
     fi
     now="$(date +%s)"
-    if [ $((now - start)) -ge "$timeout" ]; then
+    if ! af_alive "$name" || [ $((now - start)) -ge "$timeout" ]; then
+      af_tmux kill-session -t "=$name" >/dev/null 2>&1 || true
       af_status_set "$name" dead
       return 1
     fi
@@ -179,15 +182,27 @@ af_check() {
   esac
 }
 
+# af_tag_seen NAME TAG: return 0 when TAG is in NAME's pane (screen or scrollback).
+af_tag_seen() {
+  local screen res
+  screen="$(af_tmux capture-pane -p -J -S - -t "$(af_pane "$1")" 2>/dev/null || true)"
+  res="$(printf '%s\n' "$screen" | "$AF_ROOT/utils/af-parse" "$1" "$2")"
+  [ "${res% *}" != notag ]
+}
+
 # af_launch ROLE NAME CWD SESSION_ID MODE: start NAME's agent in a new tmux session.
 af_launch() {
   local role="$1" name="$2" cwd="$3" id="$4" mode="$5" cmd
   cmd="$("$AF_ADAPTER_DIR/launch.sh" "$role" "$name" "$id" "$mode")"
+  # Set history-limit before the pane exists (tmux default 2000 lines), so a
+  # long turn does not push the task tag out of the scrollback.
   # tmux gives a new session the PATH of the client that runs new-session and
   # ignores `-e PATH=`, so set utils/ on the client's PATH too.
   # Pass the command as argv (bash -c CMD), so tmux execs it directly and does
   # not run it with the user's default-shell (dash or fish break on $'...').
-  PATH="$AF_ROOT/utils:$PATH" af_tmux new-session -d -s "$name" -c "$cwd" \
+  PATH="$AF_ROOT/utils:$PATH" af_tmux start-server \; \
+    set-option -g history-limit "$AF_HISTORY_LIMIT" \; \
+    new-session -d -s "$name" -c "$cwd" \
     -e "PATH=$AF_ROOT/utils:$PATH" -e "AF_AGENT=$name" -e "AF_HOME=$AF_HOME" \
     -e "AGENT_FORCE_HOME=$AF_HOME" -e "AF_SOCKET=$AF_SOCKET" \
     -e "AF_ADAPTER_DIR=$AF_ADAPTER_DIR" bash -c "$cmd"

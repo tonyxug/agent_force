@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# af-watch AGENT: poll one worker until done/failed/blocked/dead/superseded. Exit 0.
+# af-watch AGENT: poll one worker while its status is working. Exit 0.
+# The task tag missing from the pane for AF_LOST_POLLS polls in a row -> status lost.
 set -euo pipefail
 _s="${BASH_SOURCE[0]}"
 while [ -h "$_s" ]; do
@@ -15,14 +16,27 @@ name="$(af_name "$1")"
 tag="$(af_meta_get "$name" last_tag)"
 if [ -z "$tag" ]; then echo "$name nothing to watch"; exit 0; fi
 interval="${AF_POLL_INTERVAL:-30}"
+lost_polls="${AF_LOST_POLLS:-10}"
+misses=0
 while :; do
   if [ "$(af_meta_get "$name" last_tag)" != "$tag" ]; then
     echo "$name superseded"; exit 0
   fi
   state="$(af_check "$name")"
   case "$state" in
-    done|failed|blocked) echo "$name $state $tag"; exit 0 ;;
+    working)
+      if af_tag_seen "$name" "$tag"; then
+        misses=0
+      else
+        misses=$((misses + 1))
+        if [ "$misses" -ge "$lost_polls" ]; then
+          af_status_set "$name" lost
+          echo "$name lost $tag"; exit 0
+        fi
+      fi
+      ;;
     dead|closed) echo "$name $state"; exit 0 ;;
+    *) echo "$name $state $tag"; exit 0 ;;
   esac
   sleep "$interval"
 done

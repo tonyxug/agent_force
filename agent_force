@@ -27,6 +27,9 @@ cmd_start() {
   [ $# -eq 0 ] || usage
   af_alive agent_01 && af_die "leader agent_01 already runs; use 'agent_force stop' first"
   # Fresh start: drop leftover sessions of old workers.
+  af_tmux list-sessions -F '#{session_name}' 2>/dev/null | while IFS= read -r s; do
+    echo "killed session $s"
+  done || true
   af_tmux kill-server >/dev/null 2>&1 || true
   if [ -d "$AF_HOME/agents" ]; then
     mkdir -p "$AF_HOME/archive"
@@ -49,7 +52,7 @@ cmd_start() {
 }
 
 cmd_latest() {
-  local name cwd id d
+  local name cwd id d old
   af_alive agent_01 && af_die "leader agent_01 already runs; use 'agent_force stop' first"
   [ -f "$(af_dir agent_01)/meta.json" ] || af_die "no saved session; run 'agent_force start'"
   for d in "$AF_HOME"/agents/agent_*; do
@@ -69,15 +72,23 @@ cmd_latest() {
       af_launch leader "$name" "$cwd" "$id" resume
       af_wait_ready "$name" || af_die "agent_01 did not become ready"
     else
+      old="$(af_status_get "$name")"
       af_status_set "$name" starting
       af_launch worker "$name" "$cwd" "$id" resume
       if ! af_wait_ready "$name"; then echo "$name dead: not ready"; continue; fi
+      # Keep the last task's outcome; a task that ran at stop is interrupted.
+      case "$old" in
+        working) af_status_set "$name" interrupted ;;
+        done|failed|blocked|interrupted|lost) af_status_set "$name" "$old" ;;
+      esac
     fi
     echo "$name resumed"
   done
 }
 
 cmd_stop() {
+  # Save the outcome of workers that finished but were not checked yet.
+  "$AF_ROOT/utils/af-status" >/dev/null 2>&1 || true
   af_tmux kill-server >/dev/null 2>&1 || true
   echo stopped
 }

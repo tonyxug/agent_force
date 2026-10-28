@@ -48,3 +48,14 @@ test_close()                 { spawn; af-close 2 >/dev/null; assert_eq closed "$
                                assert_eq true "$(af_meta_get agent_02 closed)" "meta"
                                assert_eq "agent_02 closed" "$(af-close 2)" "idempotent"; assert_contains "$(af-status)" closed "shown closed"; }
 test_close_unknown()         { assert_fail af-close 7; }
+test_watch_ends_on_interrupted() { spawn; af_meta_set agent_02 last_tag "(task agent_02-001)"; af_status_set agent_02 interrupted
+                               assert_eq "agent_02 interrupted (task agent_02-001)" "$(run_limited 5 af-watch 2)" "not polling forever"; }
+test_watch_ends_on_idle()    { spawn; af_meta_set agent_02 last_tag "(task agent_02-001)"
+                               assert_eq "agent_02 idle (task agent_02-001)" "$(run_limited 5 af-watch 2)" "idle is reported"; }
+test_watch_lost_tag()        { spawn; af_meta_set agent_02 last_tag "(task agent_02-999)"; af_status_set agent_02 working
+                               out=$(AF_LOST_POLLS=2 run_limited 10 af-watch 2)
+                               assert_eq "agent_02 lost (task agent_02-999)" "$out" "lost"; assert_eq lost "$(af_status_get agent_02)" "status"; }
+test_watch_tag_seen_not_lost() { spawn; echo PLEASE_SLOW | af-send 2 >/dev/null; out=$(AF_LOST_POLLS=1 af-watch 2)
+                               assert_contains "$out" "done" "tag on screen is not lost"; }
+test_status_all_leader_dead() { spawn; af_meta_set agent_01 role leader; af_status_set agent_01 idle
+                               assert_contains "$(af-status --all | head -n1)" "dead" "stopped leader shows dead"; }

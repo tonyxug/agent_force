@@ -20,7 +20,7 @@ for d in "$AF_HOME"/agents/agent_*; do
   name="${d##*/}"
   role="$(af_meta_get "$name" role)"
   if [ "$role" != worker ] && [ "$all" -eq 0 ]; then continue; fi
-  if [ "$role" = worker ]; then st="$(af_check "$name")"; else st="$(af_status_get "$name")"; fi
+  st="$(af_check "$name")"
   title="$(af_meta_get "$name" last_task_title)"
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$(dash "$role")" "$(dash "$st")" \
     "$(dash "$(af_meta_get "$name" cwd)")" "$(dash "$(af_meta_get "$name" branch)")" "$(dash "$title")"

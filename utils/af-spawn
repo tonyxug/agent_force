@@ -26,14 +26,18 @@ mkdir -p "$(af_dir "$name")"
 repo="" worktree="" branch="" cwd="$target"
 if repo="$(git -C "$target" rev-parse --show-toplevel 2>/dev/null)"; then
   sum="$(printf '%s' "$repo" | cksum)"; sum="${sum%% *}"
-  worktree="$AF_HOME/worktrees/$(basename "$repo")-${sum:0:8}/$name"
-  branch="agent_force/$name"; i=2
-  while git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; do
-    branch="agent_force/$name-$i"; i=$((i + 1))
+  base="$AF_HOME/worktrees/$(basename "$repo")-${sum:0:8}/$name"
+  # A fresh start reuses numbers; old worktrees and branches stay. Add a suffix
+  # (-2, -3, ...) until both the path and the branch are free.
+  worktree="$base" branch="agent_force/$name"; i=2
+  while [ -e "$worktree" ] || git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; do
+    worktree="$base-$i" branch="agent_force/$name-$i"; i=$((i + 1))
   done
   mkdir -p "$(dirname "$worktree")"
-  git -C "$repo" worktree add -q -b "$branch" "$worktree" HEAD >/dev/null 2>&1 \
-    || af_die "cannot create worktree $worktree"
+  if ! git -C "$repo" worktree add -q -b "$branch" "$worktree" HEAD >/dev/null 2>&1; then
+    rm -rf "$(af_dir "$name")"
+    af_die "cannot create worktree $worktree"
+  fi
   cwd="$worktree"
 else
   repo=""

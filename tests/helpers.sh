@@ -49,3 +49,21 @@ af_test_teardown() {
     rm -rf "$AF_TMP"
   fi
 }
+
+# run_limited SECS CMD...: run CMD, kill it after SECS. Prints its stdout.
+# Returns 0 if CMD ended by itself, 1 if it was killed.
+run_limited() {
+  local secs="$1" out pid i rc=1
+  shift
+  out="$(mktemp "$AF_TMP/limited.XXXXXX")"
+  "$@" >"$out" 2>/dev/null &
+  pid=$!
+  for i in $(seq 1 $((secs * 4))); do
+    if ! kill -0 "$pid" 2>/dev/null; then rc=0; break; fi
+    sleep 0.25
+  done
+  [ "$rc" -eq 0 ] || kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  cat "$out"
+  return "$rc"
+}
