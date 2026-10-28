@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Shared helpers for agent_force. Source this file; do not run it.
+set -euo pipefail
+
+# Resolve this file's real path (symlink-safe, no readlink -f).
+_af_src="${BASH_SOURCE[0]}"
+while [ -h "$_af_src" ]; do
+  _af_dir="$(cd -P "$(dirname "$_af_src")" && pwd)"
+  _af_src="$(readlink "$_af_src")"
+  case "$_af_src" in
+    /*) ;;
+    *) _af_src="$_af_dir/$_af_src" ;;
+  esac
+done
+AF_ROOT="$(cd -P "$(dirname "$_af_src")/.." && pwd)"
+unset _af_src _af_dir
+
+AF_HOME="${AGENT_FORCE_HOME:-$HOME/.agent_force}"
+AF_SOCKET="${AF_SOCKET:-agent_force}"
+AF_ADAPTER_DIR="${AF_ADAPTER_DIR:-$AF_ROOT/adapters/claude}"
+export AF_ROOT AF_HOME AF_SOCKET AF_ADAPTER_DIR
+
+af_die() {
+  printf 'agent_force: %s\n' "$*" >&2
+  exit 1
+}
+
+af_tmux() {
+  tmux -L "$AF_SOCKET" "$@"
+}
+
+# af_name INPUT -> agent_NN (01..99)
+af_name() {
+  local in="${1:-}" n
+  n="${in#agent_}"
+  case "$n" in
+    ''|*[!0-9]*) af_die "bad agent name: '$in'" ;;
+  esac
+  n=$((10#$n))
+  if [ "$n" -lt 1 ] || [ "$n" -gt 99 ]; then
+    af_die "agent number out of range (1-99): '$in'"
+  fi
+  printf 'agent_%02d\n' "$n"
+}
+
+af_dir() {
+  printf '%s/agents/%s\n' "$AF_HOME" "$1"
+}
+
+af_meta_get() {
+  local f
+  f="$(af_dir "$1")/meta.json"
+  [ -f "$f" ] || return 0
+  jq -r --arg k "$2" '.[$k] // empty' "$f"
+}
+
+# af_meta_set_json NAME KEY JSON
+af_meta_set_json() {
+  local d f tmp cur
+  d="$(af_dir "$1")"
+  f="$d/meta.json"
+  mkdir -p "$d"
+  cur='{}'
+  [ -f "$f" ] && cur="$(cat "$f")"
+  tmp="$(mktemp "$d/.meta.XXXXXX")"
+  if ! printf '%s' "$cur" | jq --arg k "$2" --argjson v "$3" '.[$k] = $v' >"$tmp"; then
+    rm -f "$tmp"
+    af_die "cannot write meta for $1"
+  fi
+  mv "$tmp" "$f"
+}
+
+# af_meta_set NAME KEY VALUE (string value)
+af_meta_set() {
+  local json
+  json="$(jq -n --arg v "$3" '$v')"
+  af_meta_set_json "$1" "$2" "$json"
+}
+
+af_status_get() {
+  local f
+  f="$(af_dir "$1")/status"
+  [ -f "$f" ] || return 0
+  cat "$f"
+}
+
+af_status_set() {
+  local d tmp
+  d="$(af_dir "$1")"
+  mkdir -p "$d"
+  tmp="$(mktemp "$d/.status.XXXXXX")"
+  printf '%s\n' "$2" >"$tmp"
+  mv "$tmp" "$d/status"
+}
+
+af_alive() {
+  af_tmux has-session -t "=$1" >/dev/null 2>&1
+}
+
+# Next worker number: highest in agents/ + 1, minimum 2.
+af_next_number() {
+  local max=1 d b n
+  if [ -d "$AF_HOME/agents" ]; then
+    for d in "$AF_HOME"/agents/agent_*; do
+      [ -e "$d" ] || continue
+      b="${d##*/agent_}"
+      case "$b" in
+        ''|*[!0-9]*) continue ;;
+      esac
+      n=$((10#$b))
+      [ "$n" -gt "$max" ] && max=$n
+    done
+  fi
+  echo $((max + 1))
+}
+
+af_uuid() {
+  if command -v uuidgen >/dev/null 2>&1; then
+    uuidgen | tr '[:upper:]' '[:lower:]'
+  elif [ -r /proc/sys/kernel/random/uuid ]; then
+    cat /proc/sys/kernel/random/uuid
+  else
+    af_die "no uuid source (need uuidgen)"
+  fi
+}
