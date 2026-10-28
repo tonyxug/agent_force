@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# af-watch AGENT: poll one worker until done/failed/blocked/dead/superseded. Exit 0.
+set -euo pipefail
+_s="${BASH_SOURCE[0]}"
+while [ -h "$_s" ]; do
+  _d="$(cd -P "$(dirname "$_s")" && pwd)"; _s="$(readlink "$_s")"
+  case "$_s" in /*) ;; *) _s="$_d/$_s" ;; esac
+done
+# shellcheck disable=SC1091
+. "$(cd -P "$(dirname "$_s")" && pwd)/lib.sh"
+
+[ $# -eq 1 ] || af_die "usage: af-watch AGENT"
+name="$(af_name "$1")"
+[ -f "$(af_dir "$name")/meta.json" ] || af_die "unknown agent: $name"
+tag="$(af_meta_get "$name" last_tag)"
+if [ -z "$tag" ]; then echo "$name nothing to watch"; exit 0; fi
+interval="${AF_POLL_INTERVAL:-30}"
+while :; do
+  if [ "$(af_meta_get "$name" last_tag)" != "$tag" ]; then
+    echo "$name superseded"; exit 0
+  fi
+  state="$(af_check "$name")"
+  case "$state" in
+    done|failed|blocked) echo "$name $state $tag"; exit 0 ;;
+    dead|closed) echo "$name $state"; exit 0 ;;
+  esac
+  sleep "$interval"
+done

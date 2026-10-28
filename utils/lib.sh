@@ -148,3 +148,33 @@ af_wait_ready() {
     sleep 0.5
   done
 }
+
+# af_check NAME: one check of a worker. Prints the resulting status word.
+# Session gone (status not closed) -> dead. While status is working, parse the
+# screen for last_tag; on done/failed/blocked save status, last_response.md, blocked_count.
+af_check() {
+  local name="$1" st tag screen res state count parse
+  st="$(af_status_get "$name")"
+  if [ "$st" = closed ]; then echo closed; return 0; fi
+  if ! af_alive "$name"; then
+    af_status_set "$name" dead
+    echo dead
+    return 0
+  fi
+  tag="$(af_meta_get "$name" last_tag)"
+  if [ "$st" != working ] || [ -z "$tag" ]; then echo "$st"; return 0; fi
+  parse="$AF_ROOT/utils/af-parse"
+  screen="$(af_tmux capture-pane -p -J -S - -t "$(af_pane "$name")" 2>/dev/null || true)"
+  res="$(printf '%s\n' "$screen" | "$parse" "$name" "$tag")"
+  state="${res% *}"
+  count="${res##* }"
+  case "$state" in
+    done|failed|blocked)
+      printf '%s\n' "$screen" | "$parse" --body "$name" "$tag" >"$(af_dir "$name")/last_response.md"
+      af_meta_set_json "$name" blocked_count "$count"
+      af_status_set "$name" "$state"
+      echo "$state"
+      ;;
+    *) echo "$st" ;;
+  esac
+}

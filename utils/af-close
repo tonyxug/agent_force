@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# af-close AGENT: kill the tmux session, mark closed. Keeps worktree and state.
+set -euo pipefail
+_s="${BASH_SOURCE[0]}"
+while [ -h "$_s" ]; do
+  _d="$(cd -P "$(dirname "$_s")" && pwd)"; _s="$(readlink "$_s")"
+  case "$_s" in /*) ;; *) _s="$_d/$_s" ;; esac
+done
+# shellcheck disable=SC1091
+. "$(cd -P "$(dirname "$_s")" && pwd)/lib.sh"
+
+[ $# -eq 1 ] || af_die "usage: af-close AGENT"
+name="$(af_name "$1")"
+[ -f "$(af_dir "$name")/meta.json" ] || af_die "unknown agent: $name"
+if [ "$(af_status_get "$name")" != closed ]; then
+  if af_alive "$name"; then af_tmux kill-session -t "=$name" >/dev/null 2>&1 || true; fi
+  af_meta_set_json "$name" closed true
+  af_status_set "$name" closed
+fi
+echo "$name closed"

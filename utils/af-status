@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# af-status [--all]: one line per agent: NAME ROLE STATUS FOLDER BRANCH TITLE (tab-separated).
+set -euo pipefail
+_s="${BASH_SOURCE[0]}"
+while [ -h "$_s" ]; do
+  _d="$(cd -P "$(dirname "$_s")" && pwd)"; _s="$(readlink "$_s")"
+  case "$_s" in /*) ;; *) _s="$_d/$_s" ;; esac
+done
+# shellcheck disable=SC1091
+. "$(cd -P "$(dirname "$_s")" && pwd)/lib.sh"
+
+all=0
+case "${1:-}" in
+  --all) all=1; shift ;;
+esac
+[ $# -eq 0 ] || af_die "usage: af-status [--all]"
+dash() { if [ -n "$1" ]; then printf '%s' "$1"; else printf '%s' "-"; fi; }
+for d in "$AF_HOME"/agents/agent_*; do
+  [ -f "$d/meta.json" ] || continue
+  name="${d##*/}"
+  role="$(af_meta_get "$name" role)"
+  if [ "$role" != worker ] && [ "$all" -eq 0 ]; then continue; fi
+  if [ "$role" = worker ]; then st="$(af_check "$name")"; else st="$(af_status_get "$name")"; fi
+  title="$(af_meta_get "$name" last_task_title)"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$(dash "$role")" "$(dash "$st")" \
+    "$(dash "$(af_meta_get "$name" cwd)")" "$(dash "$(af_meta_get "$name" branch)")" "$(dash "$title")"
+done
+exit 0
