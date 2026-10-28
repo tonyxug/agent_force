@@ -56,9 +56,7 @@ af_meta_set_json "$name" tasks 0
 af_meta_set_json "$name" blocked_count 0
 af_status_set "$name" starting
 
-cmd="$("$AF_ADAPTER_DIR/launch.sh" worker "$name" "$session_id" new)"
-af_tmux new-session -d -s "$name" -c "$cwd" \
-  -e "AF_AGENT=$name" -e "AF_HOME=$AF_HOME" -e "AF_SOCKET=$AF_SOCKET" "$cmd"
+af_launch worker "$name" "$cwd" "$session_id" new
 
 af_wait_ready "$name" || af_die "$name did not become ready"
 printf '%s\n' "$name"

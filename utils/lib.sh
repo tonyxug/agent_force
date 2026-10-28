@@ -178,3 +178,13 @@ af_check() {
     *) echo "$st" ;;
   esac
 }
+
+# af_launch ROLE NAME CWD SESSION_ID MODE: start NAME's agent in a new tmux session.
+af_launch() {
+  local role="$1" name="$2" cwd="$3" id="$4" mode="$5" cmd
+  cmd="$("$AF_ADAPTER_DIR/launch.sh" "$role" "$name" "$id" "$mode")"
+  af_tmux new-session -d -s "$name" -c "$cwd" \
+    -e "PATH=$AF_ROOT/utils:$PATH" -e "AF_AGENT=$name" -e "AF_HOME=$AF_HOME" \
+    -e "AGENT_FORCE_HOME=$AF_HOME" -e "AF_SOCKET=$AF_SOCKET" \
+    -e "AF_ADAPTER_DIR=$AF_ADAPTER_DIR" "$cmd"
+}
