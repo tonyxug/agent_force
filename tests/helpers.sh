@@ -29,7 +29,7 @@ assert_fail() {
 }
 
 af_test_setup() {
-  AF_TMP="$(mktemp -d "${TMPDIR:-/tmp}/af_test.XXXXXX")"
+  AF_TMP="$(cd -P "$(mktemp -d "${TMPDIR:-/tmp}/af_test.XXXXXX")" && pwd -P)"
   export AF_TMP
   export AGENT_FORCE_HOME="$AF_TMP/home"
   export AF_SOCKET="af_test_$$_$RANDOM"

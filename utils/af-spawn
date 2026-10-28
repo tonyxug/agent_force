@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# af-spawn [--dir PATH]: create the next worker; print its name.
+set -euo pipefail
+_s="${BASH_SOURCE[0]}"
+while [ -h "$_s" ]; do
+  _d="$(cd -P "$(dirname "$_s")" && pwd)"; _s="$(readlink "$_s")"
+  case "$_s" in /*) ;; *) _s="$_d/$_s" ;; esac
+done
+# shellcheck disable=SC1091
+. "$(cd -P "$(dirname "$_s")" && pwd)/lib.sh"
+
+target="$PWD"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dir) [ $# -ge 2 ] || af_die "--dir needs a path"; target="$2"; shift 2 ;;
+    *) af_die "usage: af-spawn [--dir PATH]" ;;
+  esac
+done
+[ -d "$target" ] || af_die "folder does not exist: $target"
+target="$(cd -P "$target" && pwd -P)"
+
+num="$(af_next_number)"
+name="$(af_name "$num")"
+mkdir -p "$(af_dir "$name")"
+
+repo="" worktree="" branch="" cwd="$target"
+if repo="$(git -C "$target" rev-parse --show-toplevel 2>/dev/null)"; then
+  sum="$(printf '%s' "$repo" | cksum)"; sum="${sum%% *}"
+  worktree="$AF_HOME/worktrees/$(basename "$repo")-${sum:0:8}/$name"
+  branch="agent_force/$name"; i=2
+  while git -C "$repo" show-ref --verify --quiet "refs/heads/$branch"; do
+    branch="agent_force/$name-$i"; i=$((i + 1))
+  done
+  mkdir -p "$(dirname "$worktree")"
+  git -C "$repo" worktree add -q -b "$branch" "$worktree" HEAD >/dev/null 2>&1 \
+    || af_die "cannot create worktree $worktree"
+  cwd="$worktree"
+else
+  repo=""
+fi
+
+session_id="$(af_uuid)"
+af_meta_set "$name" name "$name"
+af_meta_set_json "$name" number "$((10#$num))"
+af_meta_set "$name" type "$(basename "$AF_ADAPTER_DIR")"
+af_meta_set "$name" role worker
+af_meta_set "$name" cwd "$cwd"
+af_meta_set "$name" repo "$repo"
+af_meta_set "$name" worktree "$worktree"
+af_meta_set "$name" branch "$branch"
+af_meta_set "$name" session_id "$session_id"
+af_meta_set "$name" created "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+af_meta_set_json "$name" closed false
+af_meta_set "$name" last_tag ""
+af_meta_set_json "$name" tasks 0
+af_meta_set_json "$name" blocked_count 0
+af_status_set "$name" starting
+
+cmd="$("$AF_ADAPTER_DIR/launch.sh" worker "$name" "$session_id" new)"
+af_tmux new-session -d -s "$name" -c "$cwd" \
+  -e "AF_AGENT=$name" -e "AF_HOME=$AF_HOME" -e "AF_SOCKET=$AF_SOCKET" "$cmd"
+
+af_wait_ready "$name" || af_die "$name did not become ready"
+printf '%s\n' "$name"

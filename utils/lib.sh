@@ -123,3 +123,23 @@ af_uuid() {
     af_die "no uuid source (need uuidgen)"
   fi
 }
+
+# af_wait_ready NAME: wait until the adapter's ready.sh accepts the pane.
+# Success: status idle, return 0. Timeout (AF_READY_TIMEOUT, default 60 s): status dead, return 1.
+af_wait_ready() {
+  local name="$1" timeout="${AF_READY_TIMEOUT:-60}" start now screen
+  start="$(date +%s)"
+  while :; do
+    screen="$(af_tmux capture-pane -p -t "=$name:" 2>/dev/null || true)"
+    if printf '%s\n' "$screen" | "$AF_ADAPTER_DIR/ready.sh" >/dev/null 2>&1; then
+      af_status_set "$name" idle
+      return 0
+    fi
+    now="$(date +%s)"
+    if [ $((now - start)) -ge "$timeout" ]; then
+      af_status_set "$name" dead
+      return 1
+    fi
+    sleep 0.5
+  done
+}
