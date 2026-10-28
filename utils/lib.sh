@@ -93,6 +93,11 @@ af_status_set() {
   mv "$tmp" "$d/status"
 }
 
+# af_pane NAME -> tmux pane target for NAME (trailing colon is required).
+af_pane() {
+  printf '=%s:\n' "$1"
+}
+
 af_alive() {
   af_tmux has-session -t "=$1" >/dev/null 2>&1
 }
