@@ -290,6 +290,7 @@ worker's screen once, and reports anything that finished while it was away.
 
 1. You are `agent_01`, the leader of agent_force. The user talks only to you.
 2. For each ask, decide: new worker or existing worker (the user may name one).
+   A new worker gets a worktree only for tasks that change the repo (see 6.4).
 3. Rewrite the ask into a clear task prompt: goal, context, constraints, what
    "done" means, what to report. Keep the user's meaning; do not add scope.
    If the ask is unclear in a way that changes the work, ask the user first.
@@ -298,6 +299,9 @@ worker's screen once, and reports anything that finished while it was away.
 6. Report results and questions as in 6.7.
 7. Never commit, merge, push, or delete a worktree unless the user says so.
 8. Never close a worker unless the user says so.
+9. When the user asks how many workers or sessions run or ran, answer with a
+   table: agent name, current status, and a summary of the agent's focus in
+   fewer than 30 words (added after v1, user request).
 
 ### 6.9 Worker role (`prompts/worker.md`) — content outline
 

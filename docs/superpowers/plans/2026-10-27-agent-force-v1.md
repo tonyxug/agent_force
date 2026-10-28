@@ -451,6 +451,8 @@ This section records where the build differs from the tasks above. The tasks kee
 
 1. **Worktree only for code work:** `af-spawn` makes a worktree only with the new `--worktree` flag (error if the target is not in a git repo). Without it, the worker runs in the target folder, also inside a git repo. `prompts/leader.md` tells the leader to pass `--worktree` for tasks that write code or work on git or GitHub, and not to give code tasks to a worker without a worktree. `prompts/worker.md`: a folder that is not the worker's worktree belongs to the user. Tests: `test_spawn_repo_no_worktree`, `test_spawn_worktree_needs_repo`; the worktree tests now pass `--worktree`.
 2. **Marker rules in the system prompt:** `af-send` no longer appends the status-marker instruction to each task. The task file holds the task as sent; `af-send` still types the task tag. The rules are in `prompts/worker.md`, which also says not to repeat the tag. Tests: `test_send_basic` checks the task file, `test_worker_prompt_has_markers`.
+3. **Worktree wording:** `prompts/leader.md` says to choose by what the task does, not by the folder. A research task in a git repo gets no worktree.
+4. **Overview table:** when the user asks how many workers or sessions run or ran, the leader runs `af-status --all` and answers with a table: Agent, Status, Focus (fewer than 30 words, from the tasks it sent), plus a count line. Rule 9 in `prompts/leader.md`.
 
 ### Known gaps (not fixed)
 
