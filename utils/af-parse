@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# af-parse [--body] NAME TAG < screen
+# Print "STATE COUNT" for the worker marker below the last TAG line.
+# With --body, print the lines between the last TAG line and the last valid marker.
+set -euo pipefail
+
+body=0
+if [ "${1:-}" = "--body" ]; then body=1; shift; fi
+if [ "$#" -ne 2 ]; then
+  echo "usage: af-parse [--body] NAME TAG < screen" >&2
+  exit 2
+fi
+
+# Pass values through ENVIRON: awk -v would process backslash escapes.
+AF_P_NAME="$1" AF_P_TAG="$2" AF_P_BODY="$body" awk '
+{ line[NR] = $0 }
+END {
+  name = ENVIRON["AF_P_NAME"]; tag = ENVIRON["AF_P_TAG"]
+  last = 0
+  for (i = 1; i <= NR; i++) if (index(line[i], tag) > 0) last = i
+  if (last == 0) { if (ENVIRON["AF_P_BODY"] != "1") print "notag 0"; exit }
+  count = 0; state = "none"; mk = 0
+  for (i = last + 1; i <= NR; i++) {
+    l = line[i]
+    sub(/^[ \t]+/, "", l)
+    # Bullets are matched as literal byte sequences, so this is locale-safe.
+    if (!sub(/^⏺/, "", l)) sub(/^●/, "", l)
+    sub(/^ +/, "", l)
+    sub(/[ \t\r]+$/, "", l)
+    if (l == "[" name ": done]") s = "done"
+    else if (l == "[" name ": failed]") s = "failed"
+    else if (l == "[" name ": blocked]") s = "blocked"
+    else if (l == "[" name ": working]") s = "working"
+    else continue
+    count++; state = s; mk = i
+  }
+  if (ENVIRON["AF_P_BODY"] == "1") {
+    if (mk) for (i = last + 1; i < mk; i++) print line[i]
+  } else print state, count
+}'

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# af-read AGENT: print the last response of a worker.
+set -euo pipefail
+_s="${BASH_SOURCE[0]}"
+while [ -h "$_s" ]; do
+  _d="$(cd -P "$(dirname "$_s")" && pwd)"; _s="$(readlink "$_s")"
+  case "$_s" in /*) ;; *) _s="$_d/$_s" ;; esac
+done
+# shellcheck disable=SC1091
+. "$(cd -P "$(dirname "$_s")" && pwd)/lib.sh"
+
+[ $# -eq 1 ] || af_die "usage: af-read AGENT"
+name="$(af_name "$1")"
+[ -f "$(af_dir "$name")/meta.json" ] || af_die "unknown agent: $name"
+tag="$(af_meta_get "$name" last_tag)"
+if [ -n "$tag" ] && af_alive "$name"; then
+  screen="$(af_tmux capture-pane -p -J -S - -t "$(af_pane "$name")")"
+  body="$(printf '%s\n' "$screen" | "$AF_ROOT/utils/af-parse" --body "$name" "$tag")"
+  if [ -n "$body" ]; then printf '%s\n' "$body"; exit 0; fi
+fi
+f="$(af_dir "$name")/last_response.md"
+if [ -f "$f" ]; then cat "$f"; fi
+exit 0

@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# af-send [--force] AGENT [FILE]: send a task (or answer) to a worker.
+# Prompt comes from FILE, or stdin if FILE is absent or "-".
+# Exit: 0 sent, 1 error, 2 worker is working (no --force), 3 blocked but already answered.
+set -euo pipefail
+_s="${BASH_SOURCE[0]}"
+while [ -h "$_s" ]; do
+  _d="$(cd -P "$(dirname "$_s")" && pwd)"; _s="$(readlink "$_s")"
+  case "$_s" in /*) ;; *) _s="$_d/$_s" ;; esac
+done
+# shellcheck disable=SC1091
+. "$(cd -P "$(dirname "$_s")" && pwd)/lib.sh"
+
+force=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --force) force=1; shift ;;
+    --) shift; break ;;
+    -?*) af_die "usage: af-send [--force] AGENT [FILE]" ;;
+    *) break ;;
+  esac
+done
+{ [ $# -ge 1 ] && [ $# -le 2 ]; } || af_die "usage: af-send [--force] AGENT [FILE]"
+name="$(af_name "$1")"
+src="${2:--}"
+
+[ -f "$(af_dir "$name")/meta.json" ] || af_die "unknown agent: $name"
+status="$(af_status_get "$name")"
+closed="$(af_meta_get "$name" closed)"
+if [ "$status" = closed ] || [ "$status" = dead ] || [ "${closed:-false}" = true ]; then
+  af_die "$name is $status; cannot send"
+fi
+af_alive "$name" || af_die "$name has no live tmux session; cannot send"
+
+if [ "$src" = "-" ]; then
+  prompt="$(cat)"
+else
+  [ -f "$src" ] || af_die "prompt file not found: $src"
+  prompt="$(cat "$src")"
+fi
+case "$prompt" in
+  *[![:space:]]*) ;;
+  *) af_die "empty prompt" ;;
+esac
+
+if [ "$status" = working ] && [ "$force" -eq 0 ]; then
+  echo "$name is working; use --force to send anyway" >&2
+  exit 2
+fi
+
+if [ "$status" = blocked ]; then
+  last_tag="$(af_meta_get "$name" last_tag)"
+  base="$(af_meta_get "$name" blocked_count)"
+  if [ -n "$last_tag" ]; then
+    screen="$(af_tmux capture-pane -p -J -S - -t "$(af_pane "$name")")"
+    res="$(printf '%s\n' "$screen" | "$(dirname "$_s")/af-parse" "$name" "$last_tag")"
+    count="${res##* }"
+    if [ "$count" -gt "${base:-0}" ]; then
+      echo "$name is no longer blocked (answered in its pane); not sent"
+      exit 3
+    fi
+  fi
+fi
+
+n="$(af_meta_get "$name" tasks)"
+ttt="$(printf '%03d' $((10#${n:-0} + 1)))"
+tag="(task $name-$ttt)"
+mkdir -p "$(af_dir "$name")/tasks"
+file="$(af_dir "$name")/tasks/$ttt.md"
+# The status-marker rules are in the worker's system prompt (prompts/worker.md).
+printf '%s\n' "$prompt" >"$file"
+
+title="$(printf '%s\n' "$prompt" | awk 'NF { sub(/^[ \t]+/, ""); print substr($0, 1, 60); exit }')"
+
+pane="$(af_pane "$name")"
+af_tmux load-buffer -b "af_$name" "$file"
+af_tmux paste-buffer -p -d -b "af_$name" -t "$pane"
+sleep 0.3
+af_tmux send-keys -t "$pane" -l " $tag"
+sleep 0.3
+af_tmux send-keys -t "$pane" Enter
+
+af_meta_set "$name" tasks "$ttt"
+af_meta_set "$name" last_tag "$tag"
+af_meta_set "$name" last_task_title "$title"
+af_status_set "$name" working
+printf '%s %s\n' "$name" "$tag"

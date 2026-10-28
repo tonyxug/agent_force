@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# agent_force: start | start --latest | stop | list | connect N
+set -euo pipefail
+_s="${BASH_SOURCE[0]}"
+while [ -h "$_s" ]; do
+  _d="$(cd -P "$(dirname "$_s")" && pwd)"; _s="$(readlink "$_s")"
+  case "$_s" in /*) ;; *) _s="$_d/$_s" ;; esac
+done
+# shellcheck disable=SC1091
+. "$(cd -P "$(dirname "$_s")" && pwd)/utils/lib.sh"
+
+usage() {
+  cat >&2 <<'USAGE'
+usage:
+  agent_force start            start a new leader agent_01 (archives old state)
+  agent_force start --latest   resume the leader and open workers
+  agent_force stop             stop all agents, keep state
+  agent_force list             list all agents
+  agent_force connect N        attach to agent_NN
+USAGE
+  exit 1
+}
+
+cmd_start() {
+  local cwd id
+  if [ "${1:-}" = "--latest" ]; then cmd_latest; return; fi
+  [ $# -eq 0 ] || usage
+  af_alive agent_01 && af_die "leader agent_01 already runs; use 'agent_force stop' first"
+  # Fresh start: drop leftover sessions of old workers.
+  af_tmux list-sessions -F '#{session_name}' 2>/dev/null | while IFS= read -r s; do
+    echo "killed session $s"
+  done || true
+  af_tmux kill-server >/dev/null 2>&1 || true
+  if [ -d "$AF_HOME/agents" ]; then
+    mkdir -p "$AF_HOME/archive"
+    mv "$AF_HOME/agents" "$AF_HOME/archive/$(date +%Y%m%d-%H%M%S)"
+  fi
+  cwd="$(pwd -P)"
+  id="$(af_uuid)"
+  af_meta_set agent_01 name agent_01
+  af_meta_set_json agent_01 number 1
+  af_meta_set agent_01 type "$(basename "$AF_ADAPTER_DIR")"
+  af_meta_set agent_01 role leader
+  af_meta_set agent_01 cwd "$cwd"
+  af_meta_set agent_01 session_id "$id"
+  af_meta_set agent_01 created "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  af_meta_set_json agent_01 closed false
+  af_status_set agent_01 starting
+  af_launch leader agent_01 "$cwd" "$id" new
+  af_wait_ready agent_01 || af_die "agent_01 did not become ready"
+  echo "agent_01 started. Connect: agent_force connect 1"
+}
+
+cmd_latest() {
+  local name cwd id d old
+  af_alive agent_01 && af_die "leader agent_01 already runs; use 'agent_force stop' first"
+  [ -f "$(af_dir agent_01)/meta.json" ] || af_die "no saved session; run 'agent_force start'"
+  for d in "$AF_HOME"/agents/agent_*; do
+    [ -f "$d/meta.json" ] || continue
+    name="${d##*/}"
+    [ "$name" = agent_01 ] || [ "$(af_meta_get "$name" closed)" != true ] || continue
+    [ "$(af_meta_get "$name" role)" = worker ] || [ "$name" = agent_01 ] || continue
+    cwd="$(af_meta_get "$name" cwd)"
+    id="$(af_meta_get "$name" session_id)"
+    if [ ! -d "$cwd" ]; then
+      af_status_set "$name" dead
+      echo "$name dead: folder missing: $cwd"
+      continue
+    fi
+    if [ "$name" = agent_01 ]; then
+      af_status_set "$name" starting
+      af_launch leader "$name" "$cwd" "$id" resume
+      af_wait_ready "$name" || af_die "agent_01 did not become ready"
+    else
+      old="$(af_status_get "$name")"
+      [ "$old" = dead ] && old="$(af_meta_get "$name" prev_status)"
+      af_status_set "$name" starting
+      af_launch worker "$name" "$cwd" "$id" resume
+      if ! af_wait_ready "$name"; then echo "$name dead: not ready"; continue; fi
+      # Keep the last task's outcome; a task that ran at stop is interrupted.
+      case "$old" in
+        working) af_status_set "$name" interrupted ;;
+        done|failed|blocked|interrupted|lost) af_status_set "$name" "$old" ;;
+      esac
+    fi
+    echo "$name resumed"
+  done
+}
+
+cmd_stop() {
+  # Save the outcome of workers that finished but were not checked yet.
+  "$AF_ROOT/utils/af-status" >/dev/null 2>&1 || true
+  af_tmux kill-server >/dev/null 2>&1 || true
+  echo stopped
+}
+
+# Only agents with a live tmux session. af-status still refreshes all statuses.
+cmd_list() {
+  local all line out=""
+  all="$("$AF_ROOT/utils/af-status" --all)"
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    af_alive "${line%%$'\t'*}" && out="$out$line"$'\n'
+  done <<EOF
+$all
+EOF
+  if [ -n "$out" ]; then printf '%s' "$out"; else echo "no live agents"; fi
+}
+
+cmd_connect() {
+  [ $# -eq 1 ] || usage
+  local name
+  name="$(af_name "$1")"
+  af_alive "$name" || af_die "$name is not running"
+  echo "Detach: Ctrl-b d"
+  TMUX= exec tmux -L "$AF_SOCKET" attach -t "=$name"
+}
+
+[ $# -ge 1 ] || usage
+sub="$1"; shift
+case "$sub" in
+  start) cmd_start "$@" ;;
+  stop) cmd_stop ;;
+  list) cmd_list ;;
+  connect) cmd_connect "$@" ;;
+  *) usage ;;
+esac
