@@ -185,8 +185,10 @@ af_launch() {
   cmd="$("$AF_ADAPTER_DIR/launch.sh" "$role" "$name" "$id" "$mode")"
   # tmux gives a new session the PATH of the client that runs new-session and
   # ignores `-e PATH=`, so set utils/ on the client's PATH too.
+  # Pass the command as argv (bash -c CMD), so tmux execs it directly and does
+  # not run it with the user's default-shell (dash or fish break on $'...').
   PATH="$AF_ROOT/utils:$PATH" af_tmux new-session -d -s "$name" -c "$cwd" \
     -e "PATH=$AF_ROOT/utils:$PATH" -e "AF_AGENT=$name" -e "AF_HOME=$AF_HOME" \
     -e "AGENT_FORCE_HOME=$AF_HOME" -e "AF_SOCKET=$AF_SOCKET" \
-    -e "AF_ADAPTER_DIR=$AF_ADAPTER_DIR" "$cmd"
+    -e "AF_ADAPTER_DIR=$AF_ADAPTER_DIR" bash -c "$cmd"
 }

@@ -34,7 +34,7 @@ run_launch() {
   printf '#!/bin/sh\nprintf "%%s\\n" "$@" > "$OUT"\n' >"$AF_TMP/bin/claude"
   chmod +x "$AF_TMP/bin/claude"
   cmd="$("$CA/launch.sh" "$@")"
-  OUT="$AF_TMP/args" PATH="$AF_TMP/bin:$PATH" sh -c "$cmd"
+  OUT="$AF_TMP/args" PATH="$AF_TMP/bin:$PATH" bash -c "$cmd"
 }
 
 test_launch_worker_new() {

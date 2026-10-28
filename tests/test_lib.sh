@@ -51,3 +51,18 @@ test_launch_puts_utils_first_on_path() {
   while [ ! -s "$AF_TMP/path" ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
   assert_contains ":$(cat "$AF_TMP/path")" ":$AF_ROOT/utils:" "utils on PATH"
 }
+test_launch_does_not_use_user_shell() {
+  # tmux runs a one-string command with default-shell (from $SHELL); dash does
+  # not know $'...' quoting, so af_launch must not depend on that shell.
+  mkdir -p "$AF_TMP/adapter"
+  cat >"$AF_TMP/adapter/launch.sh" <<'A'
+#!/usr/bin/env bash
+printf 'printf "%%s" %q > %q; sleep 30\n' "$(printf 'line1\nit'"'"'s')" "$AF_TMP/out"
+A
+  chmod +x "$AF_TMP/adapter/launch.sh"
+  sh=/bin/dash; [ -x "$sh" ] || sh=/bin/false
+  SHELL="$sh" AF_ADAPTER_DIR="$AF_TMP/adapter" af_launch worker agent_02 "$AF_TMP" id new
+  i=0
+  while [ ! -s "$AF_TMP/out" ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
+  assert_eq "$(printf 'line1\nit'"'"'s')" "$(cat "$AF_TMP/out" 2>/dev/null)" "launch output"
+}
