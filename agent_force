@@ -73,6 +73,7 @@ cmd_latest() {
       af_wait_ready "$name" || af_die "agent_01 did not become ready"
     else
       old="$(af_status_get "$name")"
+      [ "$old" = dead ] && old="$(af_meta_get "$name" prev_status)"
       af_status_set "$name" starting
       af_launch worker "$name" "$cwd" "$id" resume
       if ! af_wait_ready "$name"; then echo "$name dead: not ready"; continue; fi

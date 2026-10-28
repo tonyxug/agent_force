@@ -74,7 +74,8 @@ not run them yourself.
 ## Status words
 
 `agent_force list` shows one status per agent: `starting`, `idle`, `working`,
-`done`, `failed`, `blocked`, `closed`, `dead` (session gone), `interrupted`
+`done`, `failed`, `blocked`, `closed`, `dead` (session gone; `start --latest` restores the status it had before),
+`interrupted`
 (the worker was working when agent_force stopped; `start --latest` keeps
 `done`, `failed`, and `blocked`), or `lost` (the task tag left the pane, so
 the outcome is unknown). The agent_force tmux server keeps 100000 lines of

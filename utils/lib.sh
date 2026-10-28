@@ -153,13 +153,15 @@ af_wait_ready() {
 }
 
 # af_check NAME: one check of a worker. Prints the resulting status word.
-# Session gone (status not closed) -> dead. While status is working, parse the
+# Session gone (status not closed) -> dead; the old status goes to meta prev_status. While status is working, parse the
 # screen for last_tag; on done/failed/blocked save status, last_response.md, blocked_count.
 af_check() {
   local name="$1" st tag screen res state count parse
   st="$(af_status_get "$name")"
   if [ "$st" = closed ]; then echo closed; return 0; fi
   if ! af_alive "$name"; then
+    # Keep the last real status, so 'start --latest' can restore it.
+    [ "$st" = dead ] || af_meta_set "$name" prev_status "$st"
     af_status_set "$name" dead
     echo dead
     return 0

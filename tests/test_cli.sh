@@ -41,3 +41,13 @@ test_stop_saves_finished()  { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/
                               af stop >/dev/null; assert_eq done "$(af_status_get agent_02)" "checked before stop"
                               af start --latest >/dev/null; assert_eq done "$(af_status_get agent_02)" "not interrupted"; }
 test_list_leader_dead()     { cd "$AF_TMP"; af start >/dev/null; af stop >/dev/null; assert_contains "$(af list)" dead "stopped leader"; }
+test_latest_after_list()    { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/null; af-spawn >/dev/null
+                              af_status_set agent_02 done; af_status_set agent_03 working
+                              af stop >/dev/null; af list >/dev/null; af list >/dev/null
+                              assert_eq dead "$(af_status_get agent_02)" "shown dead after stop"
+                              af start --latest >/dev/null
+                              assert_eq done "$(af_status_get agent_02)" "done kept"
+                              assert_eq interrupted "$(af_status_get agent_03)" "working kept"; }
+test_latest_after_two_stops() { cd "$AF_TMP"; af start >/dev/null; af-spawn >/dev/null; af_status_set agent_02 blocked
+                              af stop >/dev/null; af stop >/dev/null; af start --latest >/dev/null
+                              assert_eq blocked "$(af_status_get agent_02)" "blocked kept"; }
