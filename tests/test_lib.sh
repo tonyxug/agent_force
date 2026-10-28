@@ -40,3 +40,14 @@ test_alive() {
   af_tmux new-session -d -s agent_02 "sleep 30"
   af_alive agent_02
 }
+test_launch_puts_utils_first_on_path() {
+  # tmux gives a new session the client's PATH, so `-e PATH=` alone is not enough.
+  mkdir -p "$AF_TMP/adapter"
+  printf '#!/usr/bin/env bash\necho "sh -c '"'"'echo \\"\\$PATH\\" > %s/path; sleep 30'"'"'"\n' "$AF_TMP" >"$AF_TMP/adapter/launch.sh"
+  chmod +x "$AF_TMP/adapter/launch.sh"
+  PATH="$(dirname "$(command -v tmux)"):/usr/bin:/bin" AF_ADAPTER_DIR="$AF_TMP/adapter" \
+    af_launch worker agent_02 "$AF_TMP" id new
+  i=0
+  while [ ! -s "$AF_TMP/path" ] && [ "$i" -lt 50 ]; do sleep 0.1; i=$((i + 1)); done
+  assert_contains ":$(cat "$AF_TMP/path")" ":$AF_ROOT/utils:" "utils on PATH"
+}
