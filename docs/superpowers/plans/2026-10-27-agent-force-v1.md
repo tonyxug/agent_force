@@ -416,7 +416,7 @@ The fake adapter's `launch.sh` must echo `MODE` into the screen (`FAKE READY res
 
 This section records where the build differs from the tasks above. The tasks keep their original text.
 
-**Result:** 7 tasks done, 98 tests pass. The live smoke test with real Claude (Task 7, Step 3) passed steps 1–5.
+**Result:** 7 tasks done, 101 tests pass. The live smoke test with real Claude (Task 7, Step 3) passed steps 1–5.
 
 ### Changes made during the tasks
 
@@ -446,6 +446,11 @@ This section records where the build differs from the tasks above. The tasks kee
 
 1. **Status after `stop` → `list` → `start --latest`:** once sessions are gone, `af_check` writes `dead` over the saved status, so workers came back `idle`. `af_check` now saves the old status as meta `prev_status` before it writes `dead`. `start --latest` uses `prev_status` when the status is `dead`. `list` still shows `dead` after `stop`.
 2. Tests: `test_latest_after_list`, `test_latest_after_two_stops`.
+
+### Changes requested by the user after v1
+
+1. **Worktree only for code work:** `af-spawn` makes a worktree only with the new `--worktree` flag (error if the target is not in a git repo). Without it, the worker runs in the target folder, also inside a git repo. `prompts/leader.md` tells the leader to pass `--worktree` for tasks that write code or work on git or GitHub, and not to give code tasks to a worker without a worktree. `prompts/worker.md`: a folder that is not the worker's worktree belongs to the user. Tests: `test_spawn_repo_no_worktree`, `test_spawn_worktree_needs_repo`; the worktree tests now pass `--worktree`.
+2. **Marker rules in the system prompt:** `af-send` no longer appends the status-marker instruction to each task. The task file holds the task as sent; `af-send` still types the task tag. The rules are in `prompts/worker.md`, which also says not to repeat the tag. Tests: `test_send_basic` checks the task file, `test_worker_prompt_has_markers`.
 
 ### Known gaps (not fixed)
 

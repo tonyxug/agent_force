@@ -5,7 +5,7 @@ test_send_basic() {
   spawn; out=$(echo "do thing" | af-send 2)
   assert_eq "agent_02 (task agent_02-001)" "$out" "out"
   assert_eq working "$(af_status_get agent_02)" "status"
-  assert_contains "$(cat "$AF_HOME/agents/agent_02/tasks/001.md")" "[agent_02: blocked] if you need input" "instruction saved"
+  assert_eq "do thing" "$(cat "$AF_HOME/agents/agent_02/tasks/001.md")" "task saved as sent, no marker text"
   assert_eq "do thing" "$(af_meta_get agent_02 last_task_title)" "title"
   sleep 2; assert_eq "done 1" "$(cap agent_02 | af-parse agent_02 '(task agent_02-001)')" "fake answered"
 }

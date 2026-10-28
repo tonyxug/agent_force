@@ -20,9 +20,9 @@ test_connect_missing()      { assert_fail af connect 4; }
 test_usage()                { assert_fail af; assert_fail af bogus; }
 test_stop_without_server()  { assert_eq stopped "$(af stop)" "stop"; }
 mkrepo() { git init -q "$1"; git -C "$1" commit -q --allow-empty -m init; }
-test_restart_spawn_same_repo() { cd "$AF_TMP"; af start >/dev/null; mkrepo "$AF_TMP/repo"; (cd "$AF_TMP/repo" && af-spawn >/dev/null)
+test_restart_spawn_same_repo() { cd "$AF_TMP"; af start >/dev/null; mkrepo "$AF_TMP/repo"; (cd "$AF_TMP/repo" && af-spawn --worktree >/dev/null)
                               wt1=$(af_meta_get agent_02 worktree); af stop >/dev/null; af start >/dev/null
-                              assert_eq agent_02 "$(cd "$AF_TMP/repo" && af-spawn)" "spawn after fresh start"
+                              assert_eq agent_02 "$(cd "$AF_TMP/repo" && af-spawn --worktree)" "spawn after fresh start"
                               assert_eq "$wt1-2" "$(af_meta_get agent_02 worktree)" "path suffixed"
                               assert_eq "agent_force/agent_02-2" "$(af_meta_get agent_02 branch)" "branch suffixed"
                               assert_eq "agent_force/agent_02" "$(git -C "$wt1" branch --show-current)" "old worktree untouched"; }

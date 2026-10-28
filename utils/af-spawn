@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# af-spawn [--dir PATH]: create the next worker; print its name.
+# af-spawn [--worktree] [--dir PATH]: create the next worker; print its name.
+# --worktree: run the worker in a new git worktree of the repo at PATH (for code
+# work). Without it, the worker runs in PATH itself.
 set -euo pipefail
 _s="${BASH_SOURCE[0]}"
 while [ -h "$_s" ]; do
@@ -9,22 +11,27 @@ done
 # shellcheck disable=SC1091
 . "$(cd -P "$(dirname "$_s")" && pwd)/lib.sh"
 
-target="$PWD"
+target="$PWD" want_wt=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --dir) [ $# -ge 2 ] || af_die "--dir needs a path"; target="$2"; shift 2 ;;
-    *) af_die "usage: af-spawn [--dir PATH]" ;;
+    --worktree) want_wt=1; shift ;;
+    *) af_die "usage: af-spawn [--worktree] [--dir PATH]" ;;
   esac
 done
 [ -d "$target" ] || af_die "folder does not exist: $target"
 target="$(cd -P "$target" && pwd -P)"
+if [ "$want_wt" -eq 1 ]; then
+  git -C "$target" rev-parse --show-toplevel >/dev/null 2>&1 || af_die "--worktree: not in a git repo: $target"
+fi
 
 num="$(af_next_number)"
 name="$(af_name "$num")"
 mkdir -p "$(af_dir "$name")"
 
 repo="" worktree="" branch="" cwd="$target"
-if repo="$(git -C "$target" rev-parse --show-toplevel 2>/dev/null)"; then
+if [ "$want_wt" -eq 1 ]; then
+  repo="$(git -C "$target" rev-parse --show-toplevel)"
   sum="$(printf '%s' "$repo" | cksum)"; sum="${sum%% *}"
   base="$AF_HOME/worktrees/$(basename "$repo")-${sum:0:8}/$name"
   # A fresh start reuses numbers; old worktrees and branches stay. Add a suffix
@@ -39,8 +46,6 @@ if repo="$(git -C "$target" rev-parse --show-toplevel 2>/dev/null)"; then
     af_die "cannot create worktree $worktree"
   fi
   cwd="$worktree"
-else
-  repo=""
 fi
 
 session_id="$(af_uuid)"

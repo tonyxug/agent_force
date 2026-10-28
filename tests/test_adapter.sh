@@ -49,3 +49,7 @@ test_launch_leader_resume() {
 }
 test_launch_bad_mode()   { assert_fail "$CA/launch.sh" worker agent_05 id x; }
 test_launch_bad_role()   { assert_fail "$CA/launch.sh" nobody agent_05 id new; }
+test_worker_prompt_has_markers() {
+  run_launch worker agent_05 id-1 new; p="$(tail -n +5 "$AF_TMP/args")"
+  for st in done failed blocked working; do assert_contains "$p" "[agent_05: $st]" "$st marker"; done
+}

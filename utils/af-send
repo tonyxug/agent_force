@@ -67,13 +67,8 @@ ttt="$(printf '%03d' $((10#${n:-0} + 1)))"
 tag="(task $name-$ttt)"
 mkdir -p "$(af_dir "$name")/tasks"
 file="$(af_dir "$name")/tasks/$ttt.md"
-{
-  printf '%s\n\n' "$prompt"
-  printf 'At the very end of every answer, on its own line, write exactly one of:\n'
-  printf '[%s: done] if you succeeded, [%s: failed] if you failed,\n' "$name" "$name"
-  printf '[%s: blocked] if you need input or cannot continue,\n' "$name"
-  printf '[%s: working] if you are not finished yet.\n' "$name"
-} >"$file"
+# The status-marker rules are in the worker's system prompt (prompts/worker.md).
+printf '%s\n' "$prompt" >"$file"
 
 title="$(printf '%s\n' "$prompt" | awk 'NF { sub(/^[ \t]+/, ""); print substr($0, 1, 60); exit }')"
 

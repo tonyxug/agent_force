@@ -85,9 +85,10 @@ look into any agent session directly when needed (attach and detach).
     worker's pane directly, the leader does not report that turn.
 14. **Leader pane only.** Results and questions show only in the leader's
     pane. No OS notifications. Everything stays OS-agnostic (macOS and Linux).
-15. **Status comes from the screen, not hooks.** Every task prompt the leader
-    sends ends with an instruction: append one status marker at the end of each
-    answer. The leader reads the worker's screen with `tmux capture-pane` and
+15. **Status comes from the screen, not hooks.** The worker's system prompt
+    (`prompts/worker.md`) tells it to append one status marker at the end of
+    each answer. (Changed after v1: the rules first came at the end of every
+    task prompt; the user moved them to the system prompt.) The leader reads the worker's screen with `tmux capture-pane` and
     parses the marker. After each send, a background loop captures the
     worker's screen every 30 seconds. Markers:
 
@@ -198,10 +199,15 @@ with the live tmux sessions (a session that is gone shows as `dead`).
 1. Picks the next free number (highest number in `agents/` plus one; numbers
    are not reused while old state exists).
 2. Decides where the worker works:
-   - If the target folder is in a git repo: create a worktree on a new branch
+   - Only with `--worktree` (the leader passes it for tasks that write code
+     or work on git or GitHub; the target must be in a git repo): create a
+     worktree on a new branch
      named `agent_force/agent_NN`, from the repo's current `HEAD`. If that
      branch name exists, add a suffix. Never touch an existing branch.
-   - Otherwise: the worker runs in the target folder with no worktree.
+   - Otherwise (research, investigation, other tasks): the worker runs in
+     the target folder with no worktree, and does not change files there
+     unless the task says so. (Changed after v1: a worktree was first made
+     for every target in a git repo.)
    - The target folder defaults to the leader's folder. The leader can pass a
      different repo path if the user names one.
 3. Creates tmux session `agent_NN`, starts
@@ -219,8 +225,8 @@ The leader learns a worker's state only from the worker's screen:
 tmux -L agent_force capture-pane -p -t agent_NN
 ```
 
-**The marker instruction.** `af-send` appends this to every task prompt (the
-leader does not have to remember it):
+**The marker instruction.** It is in the worker's system prompt
+(`prompts/worker.md`, with `{{NAME}}` replaced), so task prompts stay clean:
 
 > At the very end of every answer, on its own line, write exactly one of:
 > `[agent_NN: done]` if you succeeded, `[agent_NN: failed]` if you failed,
@@ -230,8 +236,8 @@ leader does not have to remember it):
 **Parsing rules (my calls).**
 1. Only a marker that is alone on its line counts.
 2. Only markers that appear *below* the end of the last sent prompt count.
-   Reason: the sent prompt itself shows all four markers on the screen, and
-   older answers above it show old markers. `af-send` records a short unique
+   Reason: older answers above the prompt show old markers, and a prompt
+   may quote a marker. `af-send` records a short unique
    tag line at the end of each prompt (for example `(task agent_03-004)`), and
    the parser only looks below the last line that shows that tag.
 3. The last valid marker wins.
@@ -244,15 +250,14 @@ leader does not have to remember it):
 
 ### 6.6 Sending a task (`af-send N <file-or-stdin>`)
 
-1. Saves the prompt (with the marker instruction and task tag added) to
-   `tasks/NNN.md`.
+1. Saves the prompt as sent to `tasks/NNN.md`, and types a task tag after it.
 2. Sets `status = working`.
 3. Sends the full text to the worker's tmux pane in a way that works for long,
    multi-line text (for example, `tmux load-buffer` + `paste-buffer -p`, then
    Enter). Plain `send-keys` of a long prompt is not reliable.
 4. Refuses to send if the worker is `working`, unless `--force` is given.
-5. Answers to a blocked worker go through `af-send` too, so they also get the
-   marker instruction and a new tag.
+5. Answers to a blocked worker go through `af-send` too, so they also get a
+   new tag.
 
 ### 6.7 Non-blocking watch (`af-watch N`)
 
@@ -297,11 +302,12 @@ worker's screen once, and reports anything that finished while it was away.
 ### 6.9 Worker role (`prompts/worker.md`) — content outline
 
 1. You are `agent_NN`, a worker in agent_force. Your tasks come from the leader.
-2. Work only in your current folder (your worktree).
+2. Work only in your current folder. A worktree is yours; any other folder
+   belongs to the user, so change files there only when the task says so.
 3. Do not commit, push, or merge unless the task says so.
 4. End each turn with a short report: what you did, where, what is left.
-5. Follow the marker instruction at the end of each task: end every answer
-   with exactly one status marker on its own line. Use `blocked` only when you
+5. The marker instruction (above): end every answer with exactly one status
+   marker on its own line. Use `blocked` only when you
    cannot reasonably continue, and state the question clearly above it.
 
 ### 6.10 The user CLI

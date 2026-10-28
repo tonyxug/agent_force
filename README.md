@@ -3,8 +3,9 @@
 Talk to one Claude Code leader (`agent_01`). The leader gives your tasks to
 Claude Code workers (`agent_02`, `agent_03`, ...), watches them in the
 background, and reports their results and questions back to you. Every agent
-runs in its own tmux session on a private tmux socket. Workers in a git repo
-get their own git worktree and branch.
+runs in its own tmux session on a private tmux socket. Workers for code or
+GitHub work get their own git worktree and branch. Other workers (research,
+investigation) run in the folder itself, with no worktree.
 
 ## Dependencies
 
@@ -86,7 +87,7 @@ history per pane.
 - State: `~/.agent_force/agents/agent_NN/` (`meta.json`, `status`,
   `last_response.md`, `tasks/NNN.md`).
 - Old state from earlier fresh starts: `~/.agent_force/archive/<timestamp>/`.
-- Worker worktrees: `~/.agent_force/worktrees/<repo>-<hash>/agent_NN`, on
+- Worker worktrees (code workers only): `~/.agent_force/worktrees/<repo>-<hash>/agent_NN`, on
   branch `agent_force/agent_NN` (path and branch get a `-2`, `-3`, ... suffix
   if either is taken, for example after a fresh start reuses the number).
 
